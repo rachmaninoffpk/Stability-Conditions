@@ -1,1 +1,169 @@
+"""
+Created on Sepetmber 30 2020
+@author: Paul Kruse
+
+Library for various computations of surfaces in stability in P^3.
+
+FIX THIS Z_{a, b, bridgeland = True} = -ch_3^b + (1/6 + s)*a^2*ch_1^b + I*(ch_2^b - a^2/2*ch_0^b).
+
+FIX THIS Z_{a, b, tilt = True} = -ch_2^b + a^2/2*ch_0^b + I*ch_1^b. slope = nu.
+
+FIX THIS Z_{a, b} = -ch_1^b + I*ch_0^b. slope = mu."""
+import cmath
+import math
+
+def chi(E, F, surfaceDegree=1):
+    """Computes the Euler Characteristic chi(self, other) via the Hirzebruch-Rieman-Roch Theorem."""
+    d = surfaceDegree
+    newE = CohomologyClass((E[0], -E[1], E[2], d))
+    toddSurface = CohomologyClass((1,(4-d)/2, d*((22 - 12*d + 2*(d**2))/12)), d)
+    return int((F*newE*toddSurface)[2])
+
+def isList(l):
+    """Returns True if l supports l[0]. Return False if not."""
+    try:
+        l[0]
+        return True
+    except:
+        return False   
+
+
+
+class CohomologyClass():
+    """A cohomology class in H^*(S) for degree d surface. Elements can be accessed and changed as in a list. Operators: + - * / **"""
+    def __init__(self, vec = (0,0,0), surfaceDegree = 1):
+        self.chernCharacter = vec
+        self.Mukai = self.mukai()
+        self.surfaceDegree = surfaceDegree 
+
+    
+    def Z(self, a=1, b=0, bridgeland = False, surfaceDegree = 1):
+        """Returns the central charge of the object. If tilt = True returns the tilt stability
+        central charge. If bridgeland = True return the Bridgeland central charge. In all other
+        cases returns the central charge fo classical Mumford slope-stability."""
+        d = surfaceDegree
+        if bridgeland == True:
+            return -self.ch(2, b) + a^2/2*self.ch(0, b)*(d**2) + self.ch(1, b)*a*d*1j
+        return -self.ch(1, b) + self.ch(0, b)*1j
+
+    def mu(self, a=1, b=0, s=0, bridgeland = False, surfaceDegree=1):
+        """Returns the slope of the object. If bridgeland = True
+        returns the mu-slope. In all other cases returns the classical Mumford slope."""
+        centralCharge = self.Z(a, b, bridgeland, surfaceDegree)
+        if centralCharge.imag() == 0:
+            return math.inf
+        return -centralCharge.real()/centralCharge.imag()
+
+    
+
+    def ch(self, l, b=0):
+        """Returns the l-th Chern character twisted by b."""
+        value = 0
+        d = self.surfaceDegree
+        if l == 0:
+            value = self[0]
+        elif l == 1:
+            value = int(-b*self[0] + self[1])
+        elif (l == 2):
+            value = int(d*(b**2/2*self[0] -b*self[1]) + self[2])
+
+        return value
+
+    def mukai(self):
+        """Returns the Mukai vector of E"""
+        zero = self.chernCharacter[0]
+        first = self.chernCharacter[1]
+        second = self.chernCharacter[2]
+        return (zero, first, zero + second)
+
+
+    def __getitem__(self, i):
+        """Returns the i-th Chern character."""
+        return self.chernCharacter[i]
+
+    def __setitem__(self, i, c):
+        """Change the i-th Chern character."""
+        self.chernCharacter[i] = c
+        self.Mukai = self.mukai()
+
+    def __len__(self):
+        """Returns the length of self.chernCharacter. Usually 2."""
+        return len(self.chernCharacter)
+
+    def __str__(self):
+        """Returns the class as a string."""
+        return self.chernCharacter.__str__()
+
+    def __repr__(self):
+        """Returns the class as a string."""
+        return self.chernCharacter.__repr__()
+
+    def __add__(self, other):
+        """Returns self + other."""
+        return CohomologyClass(self.chernCharacter + other.chernCharacter)
+
+    def __sub__(self, other):
+        """Returns self - other."""
+        return CohomologyClass(self.chernCharacter - other.chernCharacter)
+
+    def __mul__(self, other):
+        """Returns self*other. Multiplication is the cup product."""
+        if isList(other):
+            d = self.surfaceDegree
+            zero = self[0]*other[0]
+            first = self[1]*other[0] + self[0]*other[1]
+            second = self[2]*other[0] + self[1]*other[1]*d + self[0]*other[2]
+            return CohomologyClass((zero, first, second),d)
+        return CohomologyClass(self.chernCharacter*other)
+    
+    '''Must solve equations for __pow__ method'''
+
+
+    def __pow__(self, n):
+        """Returns self^n for any integer n.
+        BUG: Do not use variables with name xx1, xx2, or xx3 with this."""
+        #var('xx1,xx2,xx3')
+        if n > 0:
+            result = CohomologyClass((self[0], self[1], self[2]), self.surfaceDegree)
+            i = 0
+            while(i < (n - 1)):
+                result *= self
+            return result
+        elif n == 0:
+            return CohomologyClass((1,0,0), self.surfaceDegree)
+        elif n == -1:
+            if self[0] == 0:
+                raise ZeroDivisionError
+            elif abs(self[0]) == 1:
+                #d = self.surfaceDegree
+                zero = self[0]
+                first = -self[1]
+                second = self[0]*(self[1]**2)*self.surfaceDegree - self[2]
+                return CohomologyClass((zero, first, second), self.surfaceDegree)
+            raise TypeError
+        elif n < -1:
+            return CohomologyClass(pow(pow(self,-1),-n), self.surfaceDegree)
+        raise TypeError
+
+    def __neg__(self):
+        """Returns -self."""
+        for i in len(self.chernCharacter):
+            self.chernCharacter[i] *= -1
+        return CohomologyClass(self.chernCharacter)
+
+    def __pos__(self):
+        """Returns +self."""
+        return self
+
+    def __div__(self, other):
+        """Returns self/other."""
+        return self*other^(-1)
+
+class O(CohomologyClass):
+    """A line bundle on surface S of degree d."""
+    def __init__(self, n, d):
+        """Create O(n)"""
+        self.chernCharacter = (1, n, int(d*(n)**2/2))
+        self.surfaceDegree = d
+
 
