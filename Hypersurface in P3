@@ -1,14 +1,16 @@
 """
 Created on Sepetmber 30 2020
 @author: Paul Kruse
+adapted from work of Benjamin Schmidt
 
-Library for various computations of surfaces in stability in P^3.
+Library for various stability conditions computations of surfaces in stability in P^3.
 
-FIX THIS Z_{a, b, bridgeland = True} = -ch_3^b + (1/6 + s)*a^2*ch_1^b + I*(ch_2^b - a^2/2*ch_0^b).
+#FIX THIS Z_{a, b, bridgeland = True} = -ch_3^b + (1/6 + s)*a^2*ch_1^b + I*(ch_2^b - a^2/2*ch_0^b).
 
-FIX THIS Z_{a, b, tilt = True} = -ch_2^b + a^2/2*ch_0^b + I*ch_1^b. slope = nu.
+FIX THIS Z_{a, b, tilt = True} = -ch_2^b + a^2/2*ch_0^b + I*ch_1^b. slope = mu.
 
-FIX THIS Z_{a, b} = -ch_1^b + I*ch_0^b. slope = mu."""
+FIX THIS Z_{a, b} = -ch_1^b + I*ch_0^b. slope = mumford."""
+
 import cmath
 import math
 
@@ -164,6 +166,65 @@ class O(CohomologyClass):
     def __init__(self, n, d):
         """Create O(n)"""
         self.chernCharacter = (1, n, int(d*(n)**2/2))
+        self.Mukai = self.mukai()
         self.surfaceDegree = d
+
+class Ideal(CohomologyClass):
+    """An ideal sheaf on surface S of degree d."""
+    def __init__(self, n, cod2 = 0, surfaceDegree):
+        """Create ideal sheaf not properly supported on surface S of degree d, twisted by n, with codimension 2 support cod2"""
+        self.chernCharacter = (1, n, int(d*(n)**2/2 - cod2)
+        self.Mukai = self.mukai()
+        self.surfaceDegree = d
+  
+ class Skyscraper(CohomologyClass):
+    """A skyscraper sheaf on surface S of degree d."""
+    def __init__(self, surfaceDegree):
+        """Create a skyscraper sheaf on S"""
+        self.chernCharacter = (0,0,1)
+        self.Mukai = (0,0,1)
+        self.surfaceDegree = d
+   
+ 
+def hom(A,B):
+    """Return the dimension of Hom(A,B). Only works if A and B are both are line bundles."""
+    if isinstance(A, O):
+        if isinstance(B, O):
+            n = B[1] - A[1]
+            #Hom(A,B) = H^0(O(n))
+            if n < 0:
+                return 0
+            if n + 3 < A.surfaceDegree:
+                return binomial(n+3, n)
+            else:
+                return binomial(n+3,n) - binomial(n+3-d, 3) 
+            FIX THIS ABOVE COMPUTATION FOR DIFFERENCES IN RESTRICTION OF LINE BUNDLES ON THE SURFACE
+        elif isinstance(B, Skyscraper):
+            return 1
+        elif isinstance(B, LeftMutation):
+            #B = L_E(F)
+            #0 -> Hom(A,L_E(F)) -> Hom(A,E^{hom(E,F)}) -> Hom(A,F) -> Ext^1(A,L_E(F)) = 0
+            #The Ext^1 is zero, since A and L_E(F) are part of the same full strong exceptional collection.
+            return B.homs*hom(A,B.E) - hom(A,B.F)
+        elif isinstance(B, RightMutation):
+            #B = R_F(E)
+            #0 -> Hom(A,E) -> Hom(A,F^{hom(E,F)}) -> Hom(A,R_F(E)) -> Ext^1(A,E) = 0
+            #The Ext^1 is zero, since A and E are part of the same full strong exceptional collection.
+            return B.homs*hom(A,B.F) - hom(A,B.E)
+        else:
+            raise TypeError()
+    elif isinstance(A, LeftMutation):
+        #A = L_E(F)
+        #0 -> Hom(F,B) -> Hom(E^{hom(E,F)},B) -> Hom(L_E(F),B) -> Ext^1(F,B) = 0
+        #The Ext^1 is zero, since F and B are part of the same full strong exceptional collection.
+        return A.homs*hom(A.E,B) - hom(A.F,B)
+    elif isinstance(A, RightMutation):
+        #A = R_F(E)
+        #0 -> Hom(R_F(E),B) -> Hom(F^{hom(E,F)},B) -> Hom(E,B) -> Ext^1(R_F(E),B) = 0
+        #The Ext^1 is zero, since R_F(E) and B are part of the same full strong exceptional collection.
+        return A.homs*hom(A.F,B) - hom(A.E,B)
+    else:
+        raise TypeError()
+
 
 
