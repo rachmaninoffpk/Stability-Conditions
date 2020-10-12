@@ -5,11 +5,9 @@ adapted from work of Benjamin Schmidt
 
 Library for various stability conditions computations of surfaces in stability in P^3.
 
-#FIX THIS Z_{a, b, bridgeland = True} = -ch_3^b + (1/6 + s)*a^2*ch_1^b + I*(ch_2^b - a^2/2*ch_0^b).
+Z_{a, b, bridgeland = True, d} = -self.ch(2, b) + a^2/2*self.ch(0, b)*d + self.ch(1, b)*a*d*1j
 
-FIX THIS Z_{a, b, tilt = True} = -ch_2^b + a^2/2*ch_0^b + I*ch_1^b. slope = mu.
-
-FIX THIS Z_{a, b} = -ch_1^b + I*ch_0^b. slope = mumford."""
+Z_{a, b, bridgeland = False, d} = -self.ch(1, b) + self.ch(0, b)*1j = mumford."""
 
 import cmath
 import math
@@ -45,7 +43,7 @@ class CohomologyClass():
         cases returns the central charge fo classical Mumford slope-stability."""
         d = surfaceDegree
         if bridgeland == True:
-            return -self.ch(2, b) + a^2/2*self.ch(0, b)*(d**2) + self.ch(1, b)*a*d*1j
+            return -self.ch(2, b) + a^2/2*self.ch(0, b)*d + self.ch(1, b)*a*d*1j
         return -self.ch(1, b) + self.ch(0, b)*1j
 
     def mu(self, a=1, b=0, s=0, bridgeland = False, surfaceDegree=1):
@@ -172,7 +170,7 @@ class O(CohomologyClass):
 class Ideal(CohomologyClass):
     """An ideal sheaf on surface S of degree d."""
     def __init__(self, n, cod2 = 0, surfaceDegree):
-        """Create ideal sheaf not properly supported on surface S of degree d, twisted by n, with codimension 2 support cod2"""
+        """Create ideal sheaf of a general 0-dimensional subscheme on surface S of degree d, twisted by n, with codimension 2 support cod2"""
         self.chernCharacter = (1, n, int(d*(n)**2/2 - cod2)
         self.Mukai = self.mukai()
         self.surfaceDegree = d
@@ -194,35 +192,57 @@ def hom(A,B):
             #Hom(A,B) = H^0(O(n))
             if n < 0:
                 return 0
-            if n + 3 < A.surfaceDegree:
+            if n < A.surfaceDegree:
                 return binomial(n+3, n)
             else:
-                return binomial(n+3,n) - binomial(n+3-d, 3) 
+                return binomial(n+3,n) - binomial(n+3-A.surfaceDegree, 3) 
             FIX THIS ABOVE COMPUTATION FOR DIFFERENCES IN RESTRICTION OF LINE BUNDLES ON THE SURFACE
+        if isinstance(B, Ideal):
+             n = B[1] - A[1]
+            #Hom(A,B) = H^0(O(n)) - |Z|, generically, where Ideal is ideal sheaf of 0-dimensional subscheme Z
+            if n < 0:
+                return 0
+            if n < A.surfaceDegree:
+                #This is given by 0 -> Hom(O, I(b-a)_Z) -> Hom(O, O(b-a)) = H^0(O(n)) -> H^0(O_Z) = |Z|
+                #|Z| = B[2] - (d*(B[1]**2)/2)
+                return max(0, binomial(n+3,n) + B[2] -  (d*(B[1]**2)/2))
+            else:
+                return max(0, binomial(n+3,n) - binomial(n+3-A.surfaceDegree, 3) + B[2] -  (d*(B[1]**2)/2)) 
         elif isinstance(B, Skyscraper):
             return 1
-        elif isinstance(B, LeftMutation):
-            #B = L_E(F)
-            #0 -> Hom(A,L_E(F)) -> Hom(A,E^{hom(E,F)}) -> Hom(A,F) -> Ext^1(A,L_E(F)) = 0
-            #The Ext^1 is zero, since A and L_E(F) are part of the same full strong exceptional collection.
-            return B.homs*hom(A,B.E) - hom(A,B.F)
-        elif isinstance(B, RightMutation):
-            #B = R_F(E)
-            #0 -> Hom(A,E) -> Hom(A,F^{hom(E,F)}) -> Hom(A,R_F(E)) -> Ext^1(A,E) = 0
-            #The Ext^1 is zero, since A and E are part of the same full strong exceptional collection.
-            return B.homs*hom(A,B.F) - hom(A,B.E)
         else:
             raise TypeError()
-    elif isinstance(A, LeftMutation):
-        #A = L_E(F)
-        #0 -> Hom(F,B) -> Hom(E^{hom(E,F)},B) -> Hom(L_E(F),B) -> Ext^1(F,B) = 0
-        #The Ext^1 is zero, since F and B are part of the same full strong exceptional collection.
-        return A.homs*hom(A.E,B) - hom(A.F,B)
-    elif isinstance(A, RightMutation):
-        #A = R_F(E)
-        #0 -> Hom(R_F(E),B) -> Hom(F^{hom(E,F)},B) -> Hom(E,B) -> Ext^1(R_F(E),B) = 0
-        #The Ext^1 is zero, since R_F(E) and B are part of the same full strong exceptional collection.
-        return A.homs*hom(A.F,B) - hom(A.E,B)
+    elif isinstance(A, Ideal):
+        if isinstance(B,O):
+            n = B[1] - A[1]
+            #O -> Hom(O_z, O(b)) = 0 -> Hom(O(a), O(b)) -> Hom(I_z(a), O(b)) -> Ext^1(O_z, O(b)) = 0, so Hom(O(a), O(b)) iso Hom(I_z(a), O(b))
+            if n < 0:
+                return 0
+            if n < A.surfaceDegree:
+                return binomial(n+3, n)
+            else:
+                return binomial(n+3,n) - binomial(n+3-A.surfaceDegree, 3)
+        elif isinstance(B,Ideal):
+            #Assume that the subschemes Z, Z' of the two ideals A, B are general and thus disjoint. Complete calulations here
+            return
+        elif isinstance(B, Skyscraper):
+            #Assume the support of Skyscraper is disjoint from Z subscheme of ideal A
+            return 1
+        else:
+            raise TypeError()
+    elif isinstance(A, Skyscraper):
+        if isinstance(B, O):
+            #O is torsion free while Skyscraper is torsion
+            return 0
+        elif isinstance(B, Ideal):
+            #Ideal is torsion free while Skyscraper is torsion
+            return 0
+        elif isinstance(B, Skyscraper):
+            #Generically, these have disjoint support
+            return 0
+        else:
+            raise TypeError()
+    
     else:
         raise TypeError()
 
