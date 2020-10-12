@@ -1,7 +1,9 @@
 """
-Created on Sepetmber 30 2020
+Created on Sepetmber 30, 2020
+Updated October 12, 2020
 @author: Paul Kruse
-adapted from work of Benjamin Schmidt
+adapted from work of Benjamin Schmidt 'Stability conditions on threefolds - first wall crossings' found at https://sites.google.com/site/benjaminschmidtmath/
+Updated library found at https://github.com/benjaminschmidt/stability_conditions
 
 Library for various stability conditions computations of surfaces in stability in P^3.
 
