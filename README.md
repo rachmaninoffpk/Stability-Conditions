@@ -1,0 +1,2 @@
+# Stability-Conditions
+These updates are extensions to the work of Benjamin Schmidt. The extensions allow for computation associated to Bridgeland Stability Conditions on hypersurfaces of degree stability d of three dimensional projective space. The original code off of which this is based has recently been overhauled and updated by Benjamin Schmidt and can be found at his GitHub https://github.com/benjaminschmidt/stability_conditions . Extensions of that updated code will also be added here in the future.
